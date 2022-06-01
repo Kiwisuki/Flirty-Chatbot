@@ -57,7 +57,7 @@ def get_token_permutations(banned):
     return biases
 
 def translate_to_english(message):
-    openai.api_key = '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'
+    openai.api_key = 'NOPE'
 
     response = openai.Completion.create(
       engine="text-davinci-002",
@@ -72,7 +72,7 @@ def translate_to_english(message):
     
     
 def reply_to_text(message, banned):
-    openai.api_key = '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'
+    openai.api_key = 'NOPE'
 
     response = openai.Completion.create(
     engine="text-davinci-002",
