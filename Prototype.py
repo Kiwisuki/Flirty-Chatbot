@@ -11,20 +11,27 @@ from bs4 import BeautifulSoup
 import openai
 from transformers import GPT2TokenizerFast
 import random
+import deepl
 
 
 
 
 USERNAME = '####'
 PASSWORD = '####'
-BANNED = 'meet video call number phone facebook instagram skype gmail email whatsapp viber snapchat see at in'
-EMOJIS = '😘 ❤️ 💝 💘 ❣ 💖 😍 😘 😽 😻 😚 💋 💗 💞 💓 💕'.split()
+BANNED = 'meet video call number phone facebook instagram skype gmail email whatsapp viber snapchat see at in'.split()
+BLACKLIST = 'SMS nr numer pastas gmail email pašt pasimat FACETIME'.split()
+EMOJIS = '😘 ❤️ 💝 💘 ❣ 💖 😍 😘 😽 😻 😚 💋 💗 💞 💓 💕 😊 🥰 ✨ 🥺 🔥 🙏'.split()
+GPT_KEY = 'xxx'
+DEEPL_KEY = 'xxx'
+MALE = ['as ', 'ęs ', 'is ', 'as,', 'ęs,', 'is,', 'as.', 'ęs.', 'is.']
+FEMALE = ['a ', 'usi ', 'i ', 'a,', 'usi,', 'i,', 'a.', 'usi.', 'i.']
 
 
 # In[2]:
 
 
 driver = webdriver.Chrome()
+translator = deepl.Translator(DEEPL_KEY)
 
 
 # In[3]:
@@ -44,9 +51,8 @@ def find_message(html):
     return soup.find("div", {"class": "timeline-body"}).text
 
 def get_token_permutations(banned):
-    ban = banned.split()
     ban_all = []
-    for word in ban:
+    for word in banned:
         ban_all.append(word)
         ban_all.append(word.capitalize())
         ban_all.append(' ' + word.capitalize())
@@ -54,29 +60,21 @@ def get_token_permutations(banned):
     tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
     ids = [tokenizer(word)['input_ids'][0] for word in ban_all]
     biases = {i:-100 for i in ids}
-    return biases
-
+    return biases    
+    
 def translate_to_english(message):
-    openai.api_key = 'NOPE'
+    message = translator.translate_text(message, target_lang="EN-US").text
+    return message
 
-    response = openai.Completion.create(
-      engine="text-davinci-002",
-      prompt=f"Translate text into English:\n\n\n"+message,
-      temperature=0.7,
-      max_tokens=256,
-      top_p=1,
-      frequency_penalty=0,
-      presence_penalty=0
-    )
-    return response['choices'][0]['text'].replace('\n', '')
-    
-    
+def translate_to_lithuanian(message):
+    message = translator.translate_text(message, target_lang="EN-US").text
+    return message
+
 def reply_to_text(message, banned):
-    openai.api_key = 'NOPE'
-
+    openai.api_key = GPT_KEY
     response = openai.Completion.create(
     engine="text-davinci-002",
-    prompt = f"""reply to a text in a texting flirty manner, at least 70 characters long, you don't want to meet. You want to chat. Use emojis. \n{message} \nReply:""",
+    prompt = f"""reply to a text in a texting flirty manner, at least 70 characters long, you don't want to meet. You want to chat. Use emojis. Text:\n{message} \nReply:""",
     temperature=0.7,
     max_tokens=256,
     top_p=1,
@@ -85,8 +83,22 @@ def reply_to_text(message, banned):
     logit_bias= banned
     )
     return response['choices'][0]['text'].replace('\n', '')
-
-
+ 
+def reply_to_first(banned):
+    openai.api_key = GPT_KEY
+    response = openai.Completion.create(
+    engine="text-davinci-002",
+    prompt="Write a flirty text as a woman, you want to chat with him:",
+    temperature=0.7,
+    max_tokens=256,
+    top_p=1,
+    frequency_penalty=0,
+    presence_penalty=0,
+    logit_bias= banned
+    )
+    return response['choices'][0]['text'].replace('\n', '')
+    
+    
 def fill_reply(reply):
     reply = reply.replace('  ', ' ')
     while len(reply)<72:
@@ -94,53 +106,48 @@ def fill_reply(reply):
         reply = reply.replace('  ', ' ')
     return reply
 
+def final_filter(text, blacklist):
+    for word in blacklist:
+        text = text.replace(word, ' ')
+    return text
+
+
+def get_reply(message):
+    if message == '[Please reactivate the user!]':
+        reply = reply_to_first(BANNED)
+    else:
+        message = translate_to_english(message)
+        reply = reply_to_text(message, BANNED)
+    reply = translator.translate_text(reply, target_lang="LT").text
+    reply = feminize(reply)
+    reply = final_filter(reply, BLACKLIST)
+    reply = fill_reply(reply)
+    return reply
+
+    
+def feminize(message):
+    for f, m in zip(FEMALE, MALE):
+        message = message.replace(m, f)
+    return message
+
+def send_reply(reply):
+    text_input = driver.find_element(by=By.XPATH, value='//*[@id="chat-windows-message-textarea"]')
+    driver.execute_script(f"document.getElementsByName('message')[0].value='{reply}'")
+    send_button = driver.find_element(by=By.XPATH, value='/html/body/app-root/block-ui/ng-component/div/ng-component/div/div/div/div/div[2]/div/form/div[2]/div/div/div/div[2]/div/button[2]')
+    send_button.click()
+    
+
 
 # In[4]:
 
 
-driver.get('file://' + 'C:/Users/mariu/Desktop/Projects/Sex-Chatbot/' + 'Chat-test-1.html')
+BANNED = get_token_permutations(BANNED)
 
 
 # In[5]:
 
 
-message = find_message(driver.page_source)
-
-
-# In[6]:
-
-
-en_message = translate_to_english(message)
-
-
-# In[7]:
-
-
-banned = get_token_permutations(BANNED)
-
-
-# In[8]:
-
-
-test = reply_to_text(en_message, banned)
-
-
-# In[9]:
-
-
-len(test)
-
-
-# In[10]:
-
-
-message
-
-
-# In[11]:
-
-
-en_message
+driver.get('file://' + 'C:/Users/mariu/Desktop/Projects/Sex-Chatbot/' + 'Chat-test-1.html')
 
 
 # In[ ]:
