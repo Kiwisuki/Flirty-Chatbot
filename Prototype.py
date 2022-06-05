@@ -12,17 +12,15 @@ import openai
 from transformers import GPT2TokenizerFast
 import random
 import deepl
+import time
+import re
 
 
-
-
-USERNAME = '####'
-PASSWORD = '####'
-BANNED = 'meet video call number phone facebook instagram skype gmail email whatsapp viber snapchat see at in'.split()
-BLACKLIST = 'SMS nr numer pastas gmail email pašt pasimat FACETIME'.split()
+USERNAME = '###'
+PASSWORD = '###'
+BANNED = 'meet video call number phone facebook instagram skype gmail email whatsapp viber snapchat see at in telephone hi hello hey'.split()
+BLACKLIST = 'SMS nr numer pastas gmail email pašt pasimat FACETIME telefon adres'.split()
 EMOJIS = '😘 ❤️ 💝 💘 ❣ 💖 😍 😘 😽 😻 😚 💋 💗 💞 💓 💕 😊 🥰 ✨ 🥺 🔥 🙏'.split()
-GPT_KEY = 'xxx'
-DEEPL_KEY = 'xxx'
 MALE = ['as ', 'ęs ', 'is ', 'as,', 'ęs,', 'is,', 'as.', 'ęs.', 'is.']
 FEMALE = ['a ', 'usi ', 'i ', 'a,', 'usi,', 'i,', 'a.', 'usi.', 'i.']
 
@@ -109,6 +107,8 @@ def fill_reply(reply):
 def final_filter(text, blacklist):
     for word in blacklist:
         text = text.replace(word, ' ')
+        
+    text = re.sub(r'[0-9]+', '', text)
     return text
 
 
@@ -119,7 +119,7 @@ def get_reply(message):
         message = translate_to_english(message)
         reply = reply_to_text(message, BANNED)
     reply = translator.translate_text(reply, target_lang="LT").text
-    reply = feminize(reply)
+    #reply = feminize(reply)
     reply = final_filter(reply, BLACKLIST)
     reply = fill_reply(reply)
     return reply
@@ -133,21 +133,57 @@ def feminize(message):
 def send_reply(reply):
     text_input = driver.find_element(by=By.XPATH, value='//*[@id="chat-windows-message-textarea"]')
     driver.execute_script(f"document.getElementsByName('message')[0].value='{reply}'")
+    text_input = driver.find_element(by=By.XPATH, value='//*[@id="chat-windows-message-textarea"]')
+    text_input.send_keys('..')
     send_button = driver.find_element(by=By.XPATH, value='/html/body/app-root/block-ui/ng-component/div/ng-component/div/div/div/div/div[2]/div/form/div[2]/div/div/div/div[2]/div/button[2]')
+    time.sleep(2)
     send_button.click()
     
+def detect_message(html):
+    soup = BeautifulSoup(html)
+    return bool(soup.find("div", {"class": "timeline-body"}))
+    
+    
+    
+def respond(message):
+    reply = get_reply(message)
+    print('Message:')
+    print(message)
+    print('=====================\n Reply:')
+    print(reply)
+    send_reply(reply)
 
 
 # In[4]:
 
 
-BANNED = get_token_permutations(BANNED)
+while True:
+    try:
+        driver = webdriver.Chrome()
+        translator = deepl.Translator(DEEPL_KEY)
+        BANNED = get_token_permutations(BANNED)
+        login(USERNAME, PASSWORD)
+        while True:
+            html = driver.page_source
+            if detect_message(html):
+                message = find_message(html)
+                respond(message)
+            else:
+                print('Waiting for message..')
+                time.sleep(5)
+
+            time.sleep(2)
+    except KeyboardInterrupt:
+        raise
+    except Exception as e:
+        print(e)
+        pass
 
 
-# In[5]:
+# In[ ]:
 
 
-driver.get('file://' + 'C:/Users/mariu/Desktop/Projects/Sex-Chatbot/' + 'Chat-test-1.html')
+# try and if fails to send clear message preemptively
 
 
 # In[ ]:
