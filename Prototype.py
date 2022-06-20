@@ -16,19 +16,10 @@ import time
 import re
 
 
-USERNAME = '###'
-PASSWORD = '###'
-BANNED = 'meet video call number phone facebook instagram skype gmail email whatsapp viber snapchat see at in telephone hi hello hey'.split()
-BLACKLIST = 'SMS nr numer pastas gmail email pašt pasimat FACETIME telefon adres'.split()
-EMOJIS = '😘 ❤️ 💝 💘 ❣ 💖 😍 😘 😽 😻 😚 💋 💗 💞 💓 💕 😊 🥰 ✨ 🥺 🔥 🙏'.split()
-MALE = ['as ', 'ęs ', 'is ', 'as,', 'ęs,', 'is,', 'as.', 'ęs.', 'is.']
-FEMALE = ['a ', 'usi ', 'i ', 'a,', 'usi,', 'i,', 'a.', 'usi.', 'i.']
-
 
 # In[2]:
 
 
-driver = webdriver.Chrome()
 translator = deepl.Translator(DEEPL_KEY)
 
 
@@ -119,7 +110,7 @@ def get_reply(message):
         message = translate_to_english(message)
         reply = reply_to_text(message, BANNED)
     reply = translator.translate_text(reply, target_lang="LT").text
-    #reply = feminize(reply)
+    reply = feminize(reply)
     reply = final_filter(reply, BLACKLIST)
     reply = fill_reply(reply)
     return reply
@@ -141,9 +132,9 @@ def send_reply(reply):
     
 def detect_message(html):
     soup = BeautifulSoup(html)
-    return bool(soup.find("div", {"class": "timeline-body"}))
-    
-    
+    message = soup.find("div", {"class": "timeline-body"})
+    return bool(message)
+        
     
 def respond(message):
     reply = get_reply(message)
@@ -167,7 +158,11 @@ while True:
             html = driver.page_source
             if detect_message(html):
                 message = find_message(html)
-                respond(message)
+                if message == '[Please reactivate the user!]' or (('[' in message) and (']' in message)): 
+                    respond(message)
+                else:
+                    driver.quit()
+                    time.sleep(10)
             else:
                 print('Waiting for message..')
                 time.sleep(5)
